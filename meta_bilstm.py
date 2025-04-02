@@ -5,18 +5,14 @@ from sklearn.metrics import accuracy_score, recall_score, matthews_corrcoef, f1_
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense, LSTM, Bidirectional, Conv1D, MaxPooling1D, Flatten, Input
 from tensorflow.keras.optimizers import Adam
-from sklearn.neighbors import NearestNeighbors
-from joblib import dump
-import joblib
 import matplotlib.pyplot as plt
 import shap
-from sklearn.neighbors import NearestNeighbors
+import joblib
 from sklearn.metrics import roc_curve, auc
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
-from sklearn.metrics import roc_curve, roc_auc_score
 
 # Load training and testing data
 name = "deep learning model"
@@ -73,14 +69,15 @@ def create_cnn_model(input_shape):
     model.compile(optimizer=Adam(learning_rate=0.001), loss='binary_crossentropy', metrics=['accuracy'])
     return model
 
-# Define Meta-Model (CNN meta)
-def create_meta_model(input_shape):
-    model = Sequential([
-        Bidirectional(LSTM(64, return_sequences=True), input_shape=input_shape),
-        Bidirectional(LSTM(32)),
-        Dense(16, activation='relu'),
-        Dense(1, activation='sigmoid')
-    ])
+# Define Meta-Model (BiLSTM)
+def create_meta_bilstm_model(input_shape):
+    inputs = Input(shape=input_shape)
+    x = Bidirectional(LSTM(64, return_sequences=True))(inputs)
+    x = Bidirectional(LSTM(32))(x)
+    x = Dense(16, activation='relu')(x)
+    outputs = Dense(1, activation='sigmoid')(x)
+
+    model = Model(inputs, outputs)
     model.compile(optimizer=Adam(learning_rate=0.001), loss='binary_crossentropy', metrics=['accuracy'])
     return model
 
@@ -106,7 +103,7 @@ for ftype in fingerprint_types:
     
     # Train BiLSTM
     bilstm_model = create_bilstm_model(input_shape)
-    bilstm_model.fit(X_train_np, y_train, epochs=10, batch_size=32, validation_split=0.2, verbose=0)
+    bilstm_model.fit(X_train_np, y_train, epochs=10, batch_size=32, validation_split=0.2, verbose=1)
     
     # Save the BiLSTM model
     bilstm_model.save(os.path.join(ftype_dir, f'bilstm_model_{ftype}.h5'))
@@ -119,7 +116,7 @@ for ftype in fingerprint_types:
     
     # Train CNN
     cnn_model = create_cnn_model(input_shape)
-    cnn_model.fit(X_train_np, y_train, epochs=10, batch_size=32, validation_split=0.2, verbose=0)
+    cnn_model.fit(X_train_np, y_train, epochs=10, batch_size=32, validation_split=0.2, verbose=1)
     
     # Save the CNN model
     cnn_model.save(os.path.join(ftype_dir, f'cnn_model_{ftype}.h5'))
@@ -135,12 +132,13 @@ stacked_train = np.hstack([np.concatenate(all_predictions_bilstm_train, axis=1),
                            np.concatenate(all_predictions_cnn_train, axis=1)])
 stacked_test = np.hstack([np.concatenate(all_predictions_bilstm_test, axis=1),
                           np.concatenate(all_predictions_cnn_test, axis=1)])
+
 pd.DataFrame(stacked_train).to_csv("stacked_train.csv", index=True)
 pd.DataFrame(stacked_test).to_csv("stacked_test.csv", index=True)
 
 # Train meta-model
-meta_model = create_meta_model(stacked_train.shape[1])
-meta_model.fit(stacked_train, y_train, epochs=10, batch_size=32, validation_split=0.2, verbose=0)
+meta_model = create_meta_bilstm_model((stacked_train.shape[1], 1))  # Ensure correct input shape
+meta_model.fit(stacked_train, y_train, epochs=10, batch_size=32, validation_split=0.2, verbose=1)
 
 # Save the meta-model
 meta_model.save(os.path.join(base_dir, 'meta_model.h5'))
@@ -154,7 +152,8 @@ y_prob_stacked_test = meta_model.predict(stacked_test)
 y_pred_stacked_test = (y_prob_stacked_test > 0.5).astype(int)
 y_prob_stacked_train = meta_model.predict(stacked_train)
 y_pred_stacked_train = (y_prob_stacked_train > 0.5).astype(int)
-## Ensure arrays are 1-dimensional
+
+# Ensure arrays are 1-dimensional
 y_prob_stacked_test = np.ravel(y_prob_stacked_test)
 y_pred_stacked_test = np.ravel(y_pred_stacked_test)
 y_prob_stacked_train = np.ravel(y_prob_stacked_train)
