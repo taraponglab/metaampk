@@ -17,28 +17,3 @@ The above copyright notice and this permission notice shall be included in all c
 
 ---
 
-## 📁 About
-
-No description, website, or topics provided.
-
----
-
-## 📊 Resources
-
-- Readme
-- Activity
-- Custom properties
-
----
-
-## ⭐ Stats
-
-- Stars: 0 ⭐  
-- Watchers: 0 👀  
-- Forks: 0 🍴
-
----
-
-## 🚀 Languages
-
-- Python 100%
