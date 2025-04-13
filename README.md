@@ -1,10 +1,8 @@
-# MetaAMPK: Accurate Prediction of AMPK Activator Using Meta-Learning Neural Network
+## MetaAMPK: Accurate Prediction of AMPK Activator Using Meta-Learning Neural Network
 
 This repository stores code to reproduce this work.
 
 ---
-
-## 🧾 License
 
 MIT License  
 Copyright (c) 2025 Dr.Tarapong Srisongram
